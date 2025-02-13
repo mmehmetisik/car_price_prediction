@@ -25,7 +25,7 @@ with open(scaler_path, 'rb') as file:
    scaler = pickle.load(file)
 
 # Ana başlık
-st.title('🚗 Araç Fiyat Tahmin Uygulaması')
+st.title('🚗 Araç Fiyat Tahmini')
 st.markdown("---")
 
 # Yan panel (sidebar) için açıklama
@@ -68,40 +68,55 @@ with col2:
 # Tahmin butonu
 if st.button('Fiyat Tahmini Yap', type='primary'):
    try:
-       # Temel özellikleri DataFrame'e dönüştür
-       input_data = pd.DataFrame({
-           'year': [year],
-           'mileage': [mileage],
-           'brand': [brand],
-           'color': [color],
-           'title_status': [title_status],
-           'state': [state]
-       })
-
-       # Türetilmiş özellikler
-       input_data['car_age'] = 2024 - input_data['year']
-       input_data['avg_km_per_year'] = input_data['mileage'] / input_data['car_age']
-       input_data['is_premium'] = input_data['brand'].isin(['bmw', 'mercedes-benz']).astype(int)
-       input_data['is_popular_color'] = input_data['color'].isin(['white', 'black', 'silver', 'gray']).astype(int)
-       input_data['clean_title_score'] = (input_data['title_status'] == 'clean vehicle').astype(int)
-
-       # Nümerik kolonları ölçeklendir
-       numeric_cols = ['year', 'mileage', 'car_age', 'avg_km_per_year']
-       numeric_data = input_data[numeric_cols].copy()
-       input_data[numeric_cols] = scaler.transform(numeric_data)
-
-       # One-hot encoding uygula ve sütunları sırala
-       categorical_cols = ['brand', 'color', 'title_status', 'state']
-       input_encoded = pd.get_dummies(input_data, columns=categorical_cols)
-
-       # Feature sırasını modeldeki ile aynı yap
-       final_input = pd.DataFrame(columns=feature_columns)
-       for col in feature_columns:
-           if col in input_encoded.columns:
-               final_input[col] = input_encoded[col]
-           else:
-               final_input[col] = 0
-
+       # İlk DataFrame oluşturma
+       input_data = pd.DataFrame(index=[0])
+       
+       # Nümerik özellikleri ekle
+       input_data['year'] = year
+       input_data['mileage'] = mileage
+       input_data['car_age'] = 2024 - year
+       input_data['avg_km_per_year'] = mileage / input_data['car_age']
+       input_data['price_per_km'] = 0.5  # Varsayılan değer
+       
+       # Nümerik değerleri ölçeklendir
+       numeric_cols = ['year', 'mileage', 'car_age', 'avg_km_per_year', 'price_per_km']
+       input_data[numeric_cols] = scaler.transform(input_data[numeric_cols])
+       
+       # Diğer özellikleri ekle
+       # Brand encoding
+       brand_cols = [col for col in feature_columns if col.startswith('brand_')]
+       for col in brand_cols:
+           brand_name = col.split('_')[1]
+           input_data[col] = 1 if brand == brand_name else 0
+           
+       # Title status encoding
+       input_data['title_status_clean vehicle'] = 1 if title_status == 'clean vehicle' else 0
+       
+       # Color encoding
+       color_cols = [col for col in feature_columns if col.startswith('color_')]
+       for col in color_cols:
+           color_name = col.split('_')[1]
+           input_data[col] = 1 if color == color_name else 0
+           
+       # State encoding
+       state_cols = [col for col in feature_columns if col.startswith('state_')]
+       for col in state_cols:
+           state_name = col.split('_')[1]
+           input_data[col] = 1 if state == state_name else 0
+           
+       # Price segment ve mileage segment (varsayılan değerler)
+       segment_cols = [col for col in feature_columns if col.startswith('price_segment_') or col.startswith('mileage_segment_')]
+       for col in segment_cols:
+           input_data[col] = 0
+           
+       # Premium marka ve popular color flag'leri
+       input_data['is_premium_1'] = 1 if brand in ['bmw', 'mercedes-benz'] else 0
+       input_data['is_popular_color_1'] = 1 if color in ['white', 'black', 'silver', 'gray'] else 0
+       input_data['clean_title_score_1'] = 1 if title_status == 'clean vehicle' else 0
+       
+       # Feature sırasını düzenle
+       final_input = input_data[feature_columns]
+       
        # Tahmin
        prediction = model.predict(final_input)[0]
        
