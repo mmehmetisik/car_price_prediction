@@ -54,7 +54,7 @@ def prepare_features(brand, year, mileage, color, state, title_status):
    features['avg_km_per_year'] = mileage / (2024 - year)
    features['price_per_km'] = 0
    
-   # Kategorik değişkenleri sadece feature_columns'da varsa ekle
+   # Kategorik değişkenleri kontrol edip ekle
    brand_col = f'brand_{brand.lower()}'
    if brand_col in feature_columns:
        features[brand_col] = 1
@@ -67,10 +67,11 @@ def prepare_features(brand, year, mileage, color, state, title_status):
    if state_col in feature_columns:
        features[state_col] = 1
        
-   title_col = f'title_status_{title_status.lower()}'
+   # Title status için özel kontrol
+   title_col = f'title_status_{title_status}'
    if title_col in feature_columns:
        features[title_col] = 1
-
+   
    # Premium marka kontrolü
    if 'is_premium_1' in feature_columns:
        features['is_premium_1'] = 1 if brand.lower() in ['bmw', 'mercedes-benz'] else 0
@@ -82,7 +83,7 @@ def prepare_features(brand, year, mileage, color, state, title_status):
    
    # Clean title score
    if 'clean_title_score_1' in feature_columns:
-       features['clean_title_score_1'] = 1 if 'clean' in title_status.lower() else 0
+       features['clean_title_score_1'] = 1 if title_status == 'clean vehicle' else 0
    
    return features
 
@@ -94,18 +95,18 @@ col1, col2, col3 = st.columns(3)
 
 # İlk sütun
 with col1:
-   brand = st.selectbox('Marka', ['Ford', 'Chevrolet', 'Toyota', 'Honda', 'BMW', 'Nissan', 'Dodge', 'Mercedes-Benz'])
+   brand = st.selectbox('Marka', ['ford', 'chevrolet', 'toyota', 'honda', 'bmw', 'nissan', 'dodge', 'mercedes-benz'])
    year = st.slider('Model Yılı', 2000, 2024, 2020)
    mileage = st.number_input('Kilometre', min_value=0, max_value=300000, value=50000, step=1000)
 
 # İkinci sütun
 with col2:
-   color = st.selectbox('Renk', ['White', 'Black', 'Silver', 'Gray', 'Blue', 'Red'])
-   state = st.selectbox('Eyalet', ['California', 'Florida', 'Texas', 'New York', 'Pennsylvania'])
+   color = st.selectbox('Renk', ['white', 'black', 'silver', 'gray', 'blue', 'red'])
+   state = st.selectbox('Eyalet', ['california', 'florida', 'texas', 'new york', 'pennsylvania'])
 
 # Üçüncü sütun
 with col3:
-   title_status = st.selectbox('Araç Durumu', ['Clean Vehicle', 'Salvage'])
+   title_status = st.selectbox('Araç Durumu', ['clean vehicle', 'salvage'])
 
 # Tahmin butonu
 if st.button('Fiyat Tahmini Yap', type='primary'):
@@ -127,7 +128,7 @@ if st.button('Fiyat Tahmini Yap', type='primary'):
        with col1:
            st.write(f"- Araç Yaşı: {2024 - year} yıl")
            st.write(f"- Kilometre: {mileage:,} km")
-           st.write(f"- Premium Marka: {'Evet' if brand in ['BMW', 'Mercedes-Benz'] else 'Hayır'}")
+           st.write(f"- Premium Marka: {'Evet' if brand in ['bmw', 'mercedes-benz'] else 'Hayır'}")
            
        with col2:
            st.write(f"- Durum: {title_status}")
