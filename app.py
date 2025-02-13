@@ -63,31 +63,31 @@ with col2:
 
 # Tahmin butonu
 if st.button('Fiyat Tahmini Yap', type='primary'):
-    try:
-        # Feature engineering
-        input_data = pd.DataFrame({
-            'brand': [brand],
-            'year': [year],
-            'mileage': [mileage],
-            'color': [color],
-            'state': [state],
-            'title_status': [title_status]
-        })
+   try:
+       # Feature engineering
+       input_data = pd.DataFrame({
+           'brand': [brand],
+           'year': [year],
+           'mileage': [mileage],
+           'color': [color],
+           'state': [state],
+           'title_status': [title_status]
+       })
 
-        # Türetilmiş özellikler
-        input_data['car_age'] = 2024 - input_data['year']
-        input_data['avg_km_per_year'] = input_data['mileage'] / input_data['car_age']
-        input_data['is_premium'] = input_data['brand'].isin(['bmw', 'mercedes-benz']).astype(int)
-        input_data['is_popular_color'] = input_data['color'].isin(['white', 'black', 'silver', 'gray']).astype(int)
-        input_data['clean_title_score'] = (input_data['title_status'] == 'clean vehicle').astype(int)
+       # Türetilmiş özellikler
+       input_data['car_age'] = 2024 - input_data['year']
+       input_data['avg_km_per_year'] = input_data['mileage'] / input_data['car_age']
+       input_data['is_premium'] = input_data['brand'].isin(['bmw', 'mercedes-benz']).astype(int)
+       input_data['is_popular_color'] = input_data['color'].isin(['white', 'black', 'silver', 'gray']).astype(int)
+       input_data['clean_title_score'] = (input_data['title_status'] == 'clean vehicle').astype(int)
 
-        # Numerik değişkenleri standardize et
-        scaler = RobustScaler()
-        numeric_features = ['year', 'mileage', 'car_age', 'avg_km_per_year']
-        input_data[numeric_features] = scaler.fit_transform(input_data[numeric_features])
+       # Numerik değişkenleri standardize et
+       scaler = RobustScaler()
+       numeric_features = ['year', 'mileage', 'car_age', 'avg_km_per_year']
+       input_data[numeric_features] = scaler.fit_transform(input_data[numeric_features])
 
-        # One-hot encoding
-        input_data = pd.get_dummies(input_data)
+       # One-hot encoding
+       input_data = pd.get_dummies(input_data)
 
        # Eksik kolonları modelin beklediği formata getirme
        for col in feature_columns:
