@@ -45,36 +45,34 @@ Bu uygulama, gelişmiş makine öğrenmesi algoritmaları kullanarak araç fiyat
 
 # Feature hazırlama fonksiyonu
 def prepare_features(brand, year, mileage, color, state, title_status):
-   # Boş bir DataFrame oluştur
-   features = pd.DataFrame(columns=feature_columns)
-   
-   # Temel özellikleri ekle
-   features.loc[0, 'year'] = year
-   features.loc[0, 'mileage'] = mileage
-   features.loc[0, 'car_age'] = 2024 - year
-   features.loc[0, 'avg_km_per_year'] = mileage / (2024 - year)
-   features.loc[0, 'price_per_km'] = 0
-   
-   # Kategorik değişkenleri one-hot encode et
-   features.loc[0, f'brand_{brand.lower()}'] = 1
-   features.loc[0, f'color_{color.lower()}'] = 1
-   features.loc[0, f'state_{state.lower()}'] = 1
-   features.loc[0, f'title_status_{title_status.lower()}'] = 1
-   
-   # Premium marka kontrolü
-   features.loc[0, 'is_premium_1'] = 1 if brand.lower() in ['bmw', 'mercedes-benz'] else 0
-   
-   # Popüler renk kontrolü
-   popular_colors = ['white', 'black', 'silver', 'gray']
-   features.loc[0, 'is_popular_color_1'] = 1 if color.lower() in popular_colors else 0
-   
-   # Clean title score
-   features.loc[0, 'clean_title_score_1'] = 1 if 'clean' in title_status.lower() else 0
-   
-   # NaN değerleri 0 ile doldur
-   features = features.fillna(0)
-   
-   return features
+    # Boş DataFrame'i sadece model feature'ları ile oluştur
+    features = pd.DataFrame(0, index=[0], columns=feature_columns)
+    
+    # Temel özellikleri ekle
+    features['year'] = year
+    features['mileage'] = mileage
+    features['car_age'] = 2024 - year
+    features['avg_km_per_year'] = mileage / (2024 - year)
+    features['price_per_km'] = 0
+    
+    # Kategorik değişkenleri sadece feature_columns'da varsa ekle
+    brand_col = f'brand_{brand.lower()}'
+    if brand_col in feature_columns:
+        features[brand_col] = 1
+        
+    color_col = f'color_{color.lower()}'
+    if color_col in feature_columns:
+        features[color_col] = 1
+        
+    state_col = f'state_{state.lower()}'
+    if state_col in feature_columns:
+        features[state_col] = 1
+        
+    title_col = f'title_status_{title_status.lower()}'
+    if title_col in feature_columns:
+        features[title_col] = 1
+    
+    return features
 
 # Ana panel - Kullanıcı girdileri
 st.header('Araç Özelliklerini Giriniz')
