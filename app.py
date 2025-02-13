@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
-import os
 
 # Uygulama Konfigürasyonu
 st.set_page_config(
@@ -12,12 +11,12 @@ st.set_page_config(
 )
 
 # Model ve feature columns yükleme
-model_path = os.path.join('models', 'final_model.pkl')
-with open(model_path, 'rb') as file:
+model_path = "models/final_model.pkl"
+with open(model_path, "rb") as file:
    model = pickle.load(file)
 
-# Feature columns'ı yükle
-with open('feature_columns.pkl', 'rb') as file:
+feature_columns_path = "models/feature_columns.pkl"
+with open(feature_columns_path, "rb") as file:
    feature_columns = pickle.load(file)
 
 # Ana başlık
@@ -43,50 +42,6 @@ Bu uygulama, gelişmiş makine öğrenmesi algoritmaları kullanarak araç fiyat
 - Güncel piyasa analizi
 """)
 
-def prepare_features(brand, year, mileage, color, state, title_status):
-   # Boş DataFrame'i sadece model feature'ları ile oluştur
-   features = pd.DataFrame(0, index=[0], columns=feature_columns)
-   
-   # Temel özellikleri ekle
-   features['year'] = year
-   features['mileage'] = mileage
-   features['car_age'] = 2024 - year
-   features['avg_km_per_year'] = mileage / (2024 - year)
-   features['price_per_km'] = 0
-   
-   # Kategorik değişkenleri kontrol edip ekle
-   brand_col = f'brand_{brand.lower()}'
-   if brand_col in feature_columns:
-       features[brand_col] = 1
-       
-   color_col = f'color_{color.lower()}'
-   if color_col in feature_columns:
-       features[color_col] = 1
-       
-   state_col = f'state_{state.lower()}'
-   if state_col in feature_columns:
-       features[state_col] = 1
-       
-   # Title status için özel kontrol
-   title_col = f'title_status_{title_status}'
-   if title_col in feature_columns:
-       features[title_col] = 1
-   
-   # Premium marka kontrolü
-   if 'is_premium_1' in feature_columns:
-       features['is_premium_1'] = 1 if brand.lower() in ['bmw', 'mercedes-benz'] else 0
-   
-   # Popüler renk kontrolü
-   if 'is_popular_color_1' in feature_columns:
-       popular_colors = ['white', 'black', 'silver', 'gray']
-       features['is_popular_color_1'] = 1 if color.lower() in popular_colors else 0
-   
-   # Clean title score
-   if 'clean_title_score_1' in feature_columns:
-       features['clean_title_score_1'] = 1 if title_status == 'clean vehicle' else 0
-   
-   return features
-
 # Ana panel - Kullanıcı girdileri
 st.header('Araç Özelliklerini Giriniz')
 
@@ -96,6 +51,7 @@ col1, col2, col3 = st.columns(3)
 # İlk sütun
 with col1:
    brand = st.selectbox('Marka', ['ford', 'chevrolet', 'toyota', 'honda', 'bmw', 'nissan', 'dodge', 'mercedes-benz'])
+   model_name = st.text_input("Model Adı (Opsiyonel)")
    year = st.slider('Model Yılı', 2000, 2024, 2020)
    mileage = st.number_input('Kilometre', min_value=0, max_value=300000, value=50000, step=1000)
 
@@ -106,16 +62,39 @@ with col2:
 
 # Üçüncü sütun
 with col3:
-   title_status = st.selectbox('Araç Durumu', ['clean vehicle', 'salvage'])
+   title_status = st.selectbox('Araç Durumu', ['clean vehicle', 'salvage insurance loss'])
+
+# Kullanıcı verisini DataFrame'e dönüştürme
+input_data = pd.DataFrame({
+   "year": [year],
+   "mileage": [mileage],
+   "brand": [brand],
+   "color": [color],
+   "title_status": [title_status],
+   "state": [state]
+})
+
+# Türetilmiş özellikleri ekleme
+input_data['car_age'] = 2024 - input_data['year']
+input_data['avg_km_per_year'] = input_data['mileage'] / input_data['car_age']
+input_data['is_premium'] = input_data['brand'].isin(['bmw', 'mercedes-benz']).astype(int)
+
+# One-Hot Encoding uygulama
+input_data = pd.get_dummies(input_data)
+
+# Eksik kolonları modelin beklediği formata getirme
+for col in feature_columns:
+   if col not in input_data.columns:
+       input_data[col] = 0
+
+# Sütunları modele uygun hale getirme
+input_data = input_data[feature_columns]
 
 # Tahmin butonu
 if st.button('Fiyat Tahmini Yap', type='primary'):
    try:
-       # Feature'ları hazırla
-       input_features = prepare_features(brand, year, mileage, color, state, title_status)
-       
        # Tahmin
-       prediction = model.predict(input_features)[0]
+       prediction = model.predict(input_data)[0]
        
        # Sonuç gösterimi
        st.success(f'Tahmini Fiyat: ${prediction:,.2f}')
