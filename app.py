@@ -50,7 +50,7 @@ Bu uygulama, gelişmiş makine öğrenmesi algoritmaları kullanarak araç fiyat
 # Ana panel - Kullanıcı girdileri
 st.header('Araç Özelliklerini Giriniz')
 
-# 3 sütunlu layout
+# 2 sütunlu layout
 col1, col2 = st.columns(2)
 
 # İlk sütun
@@ -68,14 +68,14 @@ with col2:
 # Tahmin butonu
 if st.button('Fiyat Tahmini Yap', type='primary'):
    try:
-       # Feature engineering
+       # Temel özellikleri DataFrame'e dönüştür
        input_data = pd.DataFrame({
-           'brand': [brand],
            'year': [year],
            'mileage': [mileage],
+           'brand': [brand],
            'color': [color],
-           'state': [state],
-           'title_status': [title_status]
+           'title_status': [title_status],
+           'state': [state]
        })
 
        # Türetilmiş özellikler
@@ -84,29 +84,26 @@ if st.button('Fiyat Tahmini Yap', type='primary'):
        input_data['is_premium'] = input_data['brand'].isin(['bmw', 'mercedes-benz']).astype(int)
        input_data['is_popular_color'] = input_data['color'].isin(['white', 'black', 'silver', 'gray']).astype(int)
        input_data['clean_title_score'] = (input_data['title_status'] == 'clean vehicle').astype(int)
-       # price_per_km özelliğini ekle - varsayılan bir değer ile
-       input_data['price_per_km'] = 1.0  # veya başka bir mantıklı varsayılan değer
-
-       # Nümerik kolonları sakla
-       numeric_cols = ['year', 'mileage', 'car_age', 'avg_km_per_year', 'price_per_km']
-       numeric_data = input_data[numeric_cols].copy()
-
-       # One-hot encoding
-       input_data = pd.get_dummies(input_data)
-
-       # Eksik kolonları modelin beklediği formata getirme
-       for col in feature_columns:
-           if col not in input_data.columns:
-               input_data[col] = 0
 
        # Nümerik kolonları ölçeklendir
+       numeric_cols = ['year', 'mileage', 'car_age', 'avg_km_per_year']
+       numeric_data = input_data[numeric_cols].copy()
        input_data[numeric_cols] = scaler.transform(numeric_data)
 
-       # Sütunları modele uygun hale getirme
-       input_data = input_data[feature_columns]
+       # One-hot encoding uygula ve sütunları sırala
+       categorical_cols = ['brand', 'color', 'title_status', 'state']
+       input_encoded = pd.get_dummies(input_data, columns=categorical_cols)
+
+       # Feature sırasını modeldeki ile aynı yap
+       final_input = pd.DataFrame(columns=feature_columns)
+       for col in feature_columns:
+           if col in input_encoded.columns:
+               final_input[col] = input_encoded[col]
+           else:
+               final_input[col] = 0
 
        # Tahmin
-       prediction = model.predict(input_data)[0]
+       prediction = model.predict(final_input)[0]
        
        # Sonuç gösterimi
        st.success(f'Tahmini Fiyat: ${prediction:,.2f}')
