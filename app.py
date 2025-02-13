@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import pickle
 import os
+from sklearn.preprocessing import MinMaxScaler, LabelEncoder, StandardScaler, RobustScaler
 
 # Uygulama Konfigürasyonu
 st.set_page_config(
