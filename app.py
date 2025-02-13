@@ -84,9 +84,11 @@ if st.button('Fiyat Tahmini Yap', type='primary'):
        input_data['is_premium'] = input_data['brand'].isin(['bmw', 'mercedes-benz']).astype(int)
        input_data['is_popular_color'] = input_data['color'].isin(['white', 'black', 'silver', 'gray']).astype(int)
        input_data['clean_title_score'] = (input_data['title_status'] == 'clean vehicle').astype(int)
+       # price_per_km özelliğini ekle - varsayılan bir değer ile
+       input_data['price_per_km'] = 1.0  # veya başka bir mantıklı varsayılan değer
 
        # Nümerik kolonları sakla
-       numeric_cols = ['year', 'mileage', 'car_age', 'avg_km_per_year']
+       numeric_cols = ['year', 'mileage', 'car_age', 'avg_km_per_year', 'price_per_km']
        numeric_data = input_data[numeric_cols].copy()
 
        # One-hot encoding
