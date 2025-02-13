@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
-from sklearn.preprocessing import RobustScaler
 
 # Uygulama Konfigürasyonu
 st.set_page_config(
@@ -14,12 +13,16 @@ st.set_page_config(
 # Model, scaler ve feature columns yükleme
 @st.cache_resource
 def load_model_and_features():
-    with open("models/final_model.pkl", "rb") as file:
+    model_path = "C:/Users/ASUS/Desktop/car_price_project/models/final_model.pkl"
+    feature_columns_path = "C:/Users/ASUS/Desktop/car_price_project/models/feature_columns.pkl"
+    scaler_path = "C:/Users/ASUS/Desktop/car_price_project/models/scaler.pkl"
+    
+    with open(model_path, "rb") as file:
         model = pickle.load(file)
-    with open("models/feature_columns.pkl", "rb") as file:
+    with open(feature_columns_path, "rb") as file:
         feature_columns = pickle.load(file)
-    # Scaler'ı yükle veya yeni bir tane oluştur
-    scaler = RobustScaler()
+    with open(scaler_path, "rb") as file:
+        scaler = pickle.load(file)
     return model, feature_columns, scaler
 
 model, feature_columns, scaler = load_model_and_features()
@@ -51,23 +54,19 @@ Bu uygulama, gelişmiş makine öğrenmesi algoritmaları kullanarak araç fiyat
 st.header('Araç Özelliklerini Giriniz')
 
 # 3 sütunlu layout
-col1, col2, col3 = st.columns(3)
+col1, col2 = st.columns(2)
 
 # İlk sütun
 with col1:
     brand = st.selectbox('Marka', ['ford', 'chevrolet', 'toyota', 'honda', 'bmw', 'nissan', 'dodge', 'mercedes-benz'])
-    model_name = st.text_input("Model Adı (Opsiyonel)")
     year = st.slider('Model Yılı', 2000, 2024, 2020)
     mileage = st.number_input('Kilometre', min_value=0, max_value=300000, value=50000, step=1000)
 
 # İkinci sütun
 with col2:
     color = st.selectbox('Renk', ['white', 'black', 'silver', 'gray', 'blue', 'red'])
-    state = st.selectbox('Eyalet', ['california', 'florida', 'texas', 'new york', 'pennsylvania'])
-
-# Üçüncü sütun
-with col3:
     title_status = st.selectbox('Araç Durumu', ['clean vehicle', 'salvage insurance loss'])
+    state = st.selectbox('Eyalet', ['california', 'florida', 'texas', 'new york', 'pennsylvania'])
 
 # Tahmin butonu
 if st.button('Fiyat Tahmini Yap', type='primary'):
@@ -89,9 +88,9 @@ if st.button('Fiyat Tahmini Yap', type='primary'):
         input_data['is_popular_color'] = input_data['color'].isin(['white', 'black', 'silver', 'gray']).astype(int)
         input_data['clean_title_score'] = (input_data['title_status'] == 'clean vehicle').astype(int)
 
-        # Nümerik kolonları sakla
+        # Nümerik kolonları ölçeklendir
         numeric_cols = ['year', 'mileage', 'car_age', 'avg_km_per_year']
-        numeric_data = input_data[numeric_cols].copy()
+        input_data[numeric_cols] = scaler.transform(input_data[numeric_cols])
 
         # One-Hot Encoding uygula
         input_data = pd.get_dummies(input_data, columns=['brand', 'color', 'title_status', 'state'])
@@ -100,9 +99,6 @@ if st.button('Fiyat Tahmini Yap', type='primary'):
         for col in feature_columns:
             if col not in input_data.columns:
                 input_data[col] = 0
-
-        # Nümerik kolonları ölçeklendir
-        input_data[numeric_cols] = scaler.fit_transform(numeric_data)
 
         # Sütunları modele uygun hale getir
         input_data = input_data[feature_columns]
