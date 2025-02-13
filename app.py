@@ -11,10 +11,14 @@ st.set_page_config(
    layout="wide"
 )
 
-# Model yükleme
+# Model ve feature columns yükleme
 model_path = os.path.join('models', 'final_model.pkl')
 with open(model_path, 'rb') as file:
    model = pickle.load(file)
+
+# Feature columns'ı yükle
+with open('feature_columns.pkl', 'rb') as file:
+   feature_columns = pickle.load(file)
 
 # Ana başlık
 st.title('🚗 Araç Fiyat Tahmin Uygulaması')
@@ -23,12 +27,54 @@ st.markdown("---")
 # Yan panel (sidebar) için açıklama
 st.sidebar.header("Uygulama Hakkında")
 st.sidebar.markdown("""
-Bu uygulama, araç özelliklerine göre fiyat tahmini yapar.
-- Veri seti: USA Cars Dataset
-- Model: LightGBM
-- R² Score: 0.9856
-- MAE: 844.21$
+### Araç Fiyat Tahmin Sistemi
+
+Bu uygulama, gelişmiş makine öğrenmesi algoritmaları kullanarak araç fiyat tahmini yapar.
+
+**Özellikler:**
+- Gerçek piyasa verilerine dayalı tahminler
+- 50'den fazla özellik analizi
+- Anlık fiyat hesaplama
+- Detaylı araç özellikleri analizi
+
+**Veri Kaynağı:** 
+- USA Cars Dataset
+- 2,500+ araç verisi
+- Güncel piyasa analizi
 """)
+
+# Feature hazırlama fonksiyonu
+def prepare_features(brand, year, mileage, color, state, title_status):
+   # Boş bir DataFrame oluştur
+   features = pd.DataFrame(columns=feature_columns)
+   
+   # Temel özellikleri ekle
+   features.loc[0, 'year'] = year
+   features.loc[0, 'mileage'] = mileage
+   features.loc[0, 'car_age'] = 2024 - year
+   features.loc[0, 'avg_km_per_year'] = mileage / (2024 - year)
+   features.loc[0, 'price_per_km'] = 0
+   
+   # Kategorik değişkenleri one-hot encode et
+   features.loc[0, f'brand_{brand.lower()}'] = 1
+   features.loc[0, f'color_{color.lower()}'] = 1
+   features.loc[0, f'state_{state.lower()}'] = 1
+   features.loc[0, f'title_status_{title_status.lower()}'] = 1
+   
+   # Premium marka kontrolü
+   features.loc[0, 'is_premium_1'] = 1 if brand.lower() in ['bmw', 'mercedes-benz'] else 0
+   
+   # Popüler renk kontrolü
+   popular_colors = ['white', 'black', 'silver', 'gray']
+   features.loc[0, 'is_popular_color_1'] = 1 if color.lower() in popular_colors else 0
+   
+   # Clean title score
+   features.loc[0, 'clean_title_score_1'] = 1 if 'clean' in title_status.lower() else 0
+   
+   # NaN değerleri 0 ile doldur
+   features = features.fillna(0)
+   
+   return features
 
 # Ana panel - Kullanıcı girdileri
 st.header('Araç Özelliklerini Giriniz')
@@ -50,26 +96,15 @@ with col2:
 # Üçüncü sütun
 with col3:
    title_status = st.selectbox('Araç Durumu', ['Clean Vehicle', 'Salvage'])
-   is_premium = 1 if brand in ['BMW', 'Mercedes-Benz'] else 0
-   car_age = 2024 - year
 
 # Tahmin butonu
 if st.button('Fiyat Tahmini Yap', type='primary'):
    try:
-       # Feature engineering (modelimizde kullandığımız aynı işlemleri yapacağız)
-       input_data = pd.DataFrame({
-           'brand': [brand],
-           'year': [year],
-           'title_status': [title_status],
-           'mileage': [mileage],
-           'color': [color],
-           'state': [state],
-           'car_age': [car_age],
-           'is_premium': [is_premium]
-       })
+       # Feature'ları hazırla
+       input_features = prepare_features(brand, year, mileage, color, state, title_status)
        
        # Tahmin
-       prediction = model.predict(input_data)[0]
+       prediction = model.predict(input_features)[0]
        
        # Sonuç gösterimi
        st.success(f'Tahmini Fiyat: ${prediction:,.2f}')
@@ -80,9 +115,9 @@ if st.button('Fiyat Tahmini Yap', type='primary'):
        col1, col2 = st.columns(2)
        
        with col1:
-           st.write(f"- Araç Yaşı: {car_age} yıl")
+           st.write(f"- Araç Yaşı: {2024 - year} yıl")
            st.write(f"- Kilometre: {mileage:,} km")
-           st.write(f"- Premium Marka: {'Evet' if is_premium else 'Hayır'}")
+           st.write(f"- Premium Marka: {'Evet' if brand in ['BMW', 'Mercedes-Benz'] else 'Hayır'}")
            
        with col2:
            st.write(f"- Durum: {title_status}")
@@ -90,4 +125,5 @@ if st.button('Fiyat Tahmini Yap', type='primary'):
            st.write(f"- Renk: {color}")
            
    except Exception as e:
-       st.error(f"Bir hata oluştu: {e}")
+       st.error(f"Bir hata oluştu: {str(e)}")
+       st.error("Lütfen tüm alanları doğru şekilde doldurunuz.")
