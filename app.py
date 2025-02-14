@@ -30,25 +30,6 @@ def load_model_and_components():
 st.title('🚗 Araç Fiyat Tahmini')
 st.markdown("---")
 
-# Yan panel
-st.sidebar.header("Uygulama Hakkında")
-st.sidebar.markdown("""
-### Araç Fiyat Tahmin Sistemi
-
-Bu uygulama, gelişmiş makine öğrenmesi algoritmaları kullanarak araç fiyat tahmini yapar.
-
-**Özellikler:**
-- Gerçek piyasa verilerine dayalı tahminler
-- 50'den fazla özellik analizi
-- Anlık fiyat hesaplama
-- Detaylı araç özellikleri analizi
-
-**Veri Kaynağı:** 
-- USA Cars Dataset
-- 2,500+ araç verisi
-- Güncel piyasa analizi
-""")
-
 try:
     # Model ve bileşenleri yükle
     model, feature_columns, scaler = load_model_and_components()
@@ -78,68 +59,74 @@ try:
     
     # Tahmin butonu
     if st.button('Fiyat Tahmini Yap', type='primary'):
-        try:
-            # Veri sözlüğü oluştur
-            car_age = 2024 - year
-            avg_km_per_year = mileage / car_age if car_age > 0 else 0
+        # 1️⃣ **Boş DataFrame oluştur ve sütunları feature_columns ile aynı sıraya sok**
+        input_data = pd.DataFrame(columns=feature_columns, index=[0]).reindex(columns=feature_columns, fill_value=0)
+        
+        # 2️⃣ **Temel özellikleri hesapla**
+        car_age = 2024 - year
+        avg_km_per_year = mileage / car_age if car_age > 0 else 0
+        
+        # 3️⃣ **Nümerik değerleri oluştur ve ölçekle**
+        numeric_input = pd.DataFrame({
+            'year': [year],
+            'mileage': [mileage],
+            'car_age': [car_age],
+            'avg_km_per_year': [avg_km_per_year],
+            'price_per_km': [0]  # Başlangıç değeri
+        })
+
+        # **Ölçekleme işlemi**
+        numeric_cols = ['year', 'mileage', 'car_age', 'avg_km_per_year', 'price_per_km']
+        scaled_numeric = scaler.transform(numeric_input)
+
+        # **Ölçeklenmiş değerleri input_data'ya aktar**
+        for idx, col in enumerate(numeric_cols):
+            input_data[col] = scaled_numeric[0][idx]
+        
+        # 4️⃣ **Kategorik değişkenleri One-Hot Encoding formatına uygun şekilde ekle**
+        input_data[f'brand_{brand}'] = 1
+        input_data[f'color_{color}'] = 1
+        input_data[f'state_{state}'] = 1
+        input_data['title_status_clean vehicle'] = 1  # Sabit durum
+        
+        # 5️⃣ **Özel flagleri ekle**
+        input_data['is_premium_1'] = 1 if brand in ['bmw', 'mercedes-benz'] else 0
+        input_data['is_popular_color_1'] = 1 if color in ['white', 'black', 'silver', 'gray'] else 0
+        input_data['clean_title_score_1'] = 1
+        
+        # 6️⃣ **Eksik sütunları sıfır ile doldur**
+        for col in feature_columns:
+            if col not in input_data.columns:
+                input_data[col] = 0
+        
+        # 7️⃣ **Feature setini doğru sıraya göre yeniden düzenle**
+        input_data = input_data[feature_columns]
+
+        # **Debug için kontrol amaçlı log**
+        st.write("Modelde Kullanılan Özellikler:", feature_columns)
+        st.write("Tahmin İçin Oluşturulan Özellikler:", input_data.columns.tolist())
+
+        # 8️⃣ **Tahmin işlemi**
+        prediction = model.predict(input_data)[0]
+        
+        # 9️⃣ **Sonuç gösterimi**
+        st.success(f'Tahmini Fiyat: ${prediction:,.2f}')
+        
+        #  🔟 **Detaylı açıklama**
+        st.markdown("---")
+        st.markdown("### Fiyatı Etkileyen Faktörler")
+        detail_col1, detail_col2 = st.columns(2)
+        
+        with detail_col1:
+            st.write(f"- Araç Yaşı: {car_age} yıl")
+            st.write(f"- Kilometre: {mileage:,} km")
+            st.write(f"- Yıllık Ort. Kilometre: {avg_km_per_year:,.0f} km")
             
-            # Tüm özellikleri sıfırla
-            data = {col: 0 for col in feature_columns}
-            
-            # Nümerik değerleri hazırla
-            numeric_input = pd.DataFrame({
-                'year': [year],
-                'mileage': [mileage],
-                'car_age': [car_age],
-                'avg_km_per_year': [avg_km_per_year],
-                'price_per_km': [0]
-            })
-            
-            # Nümerik değerleri ölçekle
-            scaled_numeric = scaler.transform(numeric_input)
-            
-            # Ölçeklenmiş nümerik değerleri ekle
-            numeric_cols = ['year', 'mileage', 'car_age', 'avg_km_per_year', 'price_per_km']
-            for i, col in enumerate(numeric_cols):
-                data[col] = scaled_numeric[0][i]
-            
-            # Kategorik değerleri ekle
-            data[f'brand_{brand}'] = 1
-            data[f'color_{color}'] = 1
-            data[f'state_{state}'] = 1
-            data['title_status_clean vehicle'] = 1
-            data['is_premium_1'] = 1 if brand in ['bmw', 'mercedes-benz'] else 0
-            data['is_popular_color_1'] = 1 if color in ['white', 'black', 'silver', 'gray'] else 0
-            data['clean_title_score_1'] = 1
-            
-            # DataFrame oluştur ve sıralı feature'ları kullan
-            input_df = pd.DataFrame([data])
-            
-            # Tahmin
-            prediction = model.predict(input_df)[0]
-            
-            # Sonuç gösterimi
-            st.success(f'Tahmini Fiyat: ${prediction:,.2f}')
-            
-            # Detaylı açıklama
-            st.markdown("---")
-            st.markdown("### Fiyatı Etkileyen Faktörler")
-            detail_col1, detail_col2 = st.columns(2)
-            
-            with detail_col1:
-                st.write(f"- Araç Yaşı: {car_age} yıl")
-                st.write(f"- Kilometre: {mileage:,} km")
-                st.write(f"- Yıllık Ort. Kilometre: {avg_km_per_year:,.0f} km")
-                
-            with detail_col2:
-                st.write(f"- Premium Marka: {'Evet' if data['is_premium_1'] == 1 else 'Hayır'}")
-                st.write(f"- Popüler Renk: {'Evet' if data['is_popular_color_1'] == 1 else 'Hayır'}")
-                st.write(f"- Araç Durumu: {title_status}")
-                
-        except Exception as e:
-            st.error(f"Tahmin işlemi sırasında bir hata oluştu: {str(e)}")
-            st.write("Hata detayları:", data)
+        with detail_col2:
+            st.write(f"- Premium Marka: {'Evet' if input_data['is_premium_1'].iloc[0] == 1 else 'Hayır'}")
+            st.write(f"- Popüler Renk: {'Evet' if input_data['is_popular_color_1'].iloc[0] == 1 else 'Hayır'}")
+            st.write(f"- Araç Durumu: {title_status}")
 
 except Exception as e:
-    st.error(f"Uygulama başlatılırken bir hata oluştu: {str(e)}")
-    st.error("Lütfen tüm model dosyalarının doğru konumda olduğunu kontrol edin.")
+    st.error(f"Bir hata oluştu: {str(e)}")
+    st.error("Lütfen tüm değerleri doğru şekilde giriniz.")
