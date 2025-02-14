@@ -74,7 +74,8 @@ if st.button('Fiyat Tahmini Yap', type='primary'):
           'mileage': [mileage],
           'color': [color],
           'state': [state],
-          'title_status': [title_status]
+          'title_status': [title_status],
+          'price_per_km': [25000 / (mileage + 1)]  # Başlangıçta price_per_km ekle
       })
 
       # Türetilmiş özellikler
@@ -96,7 +97,7 @@ if st.button('Fiyat Tahmini Yap', type='primary'):
       input_data = input_data[feature_columns]
 
       # Nümerik özellikleri ölçekleme
-      numeric_cols = ['year', 'mileage', 'car_age', 'avg_km_per_year']
+      numeric_cols = ['year', 'mileage', 'car_age', 'avg_km_per_year', 'price_per_km']
       input_data[numeric_cols] = scaler.transform(input_data[numeric_cols])
       
       # Tahmin
