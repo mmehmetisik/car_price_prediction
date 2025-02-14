@@ -4,102 +4,115 @@ import numpy as np
 import pickle
 import os
 
-# Sayfa yapılandırması
+# Uygulama Konfigürasyonu
 st.set_page_config(
-    page_title="Araç Fiyat Tahmini",
-    page_icon="🚗",
-    layout="wide"
+   page_title="Araç Fiyat Tahmini",
+   page_icon="🚗",
+   layout="wide"
 )
 
-# Model ve bileşenleri yükleme
-try:
-    with open('models/final_model.pkl', 'rb') as file:
-        model = pickle.load(file)
-    with open('models/feature_columns.pkl', 'rb') as file:
-        feature_columns = pickle.load(file)
-    with open('models/scaler.pkl', 'rb') as file:
-        scaler = pickle.load(file)
-        
-    # Ana başlık
-    st.title('🚗 Araç Fiyat Tahmini')
-    st.markdown("---")
-    
-    # Marka, renk ve eyalet seçeneklerini feature_columns'dan al
-    brand_options = [col.replace('brand_', '') for col in feature_columns if col.startswith('brand_')]
-    color_options = [col.replace('color_', '') for col in feature_columns if col.startswith('color_')]
-    state_options = [col.replace('state_', '') for col in feature_columns if col.startswith('state_')]
-    
-    # Kullanıcı girdileri
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        brand = st.selectbox('Marka', brand_options)
-        year = st.slider('Model Yılı', 2000, 2024, 2020)
-        mileage = st.number_input('Kilometre', min_value=0, max_value=300000, value=50000, step=1000)
-    
-    with col2:
-        color = st.selectbox('Renk', color_options)
-        title_status = st.selectbox('Araç Durumu', ['clean vehicle'])
-        state = st.selectbox('Eyalet', state_options)
-    
-    if st.button('Fiyat Tahmini Yap', type='primary'):
-        # Feature sözlüğü oluştur
-        data_dict = {col: 0 for col in feature_columns}
-        
-        # Temel hesaplamalar
-        car_age = 2024 - year
-        avg_km_per_year = mileage / car_age if car_age > 0 else 0
-        
-        # Nümerik değerleri ölçekle
-        numeric_features = ['year', 'mileage', 'car_age', 'avg_km_per_year', 'price_per_km']
-        numeric_data = pd.DataFrame([[year, mileage, car_age, avg_km_per_year, 0]], 
-                                  columns=numeric_features)
-        scaled_numeric = scaler.transform(numeric_data)
-        
-        # Ölçeklenmiş değerleri sözlüğe ekle
-        for i, feature in enumerate(numeric_features):
-            data_dict[feature] = scaled_numeric[0][i]
-        
-        # Kategorik değişkenleri ayarla
-        data_dict[f'brand_{brand}'] = 1
-        data_dict[f'color_{color}'] = 1
-        data_dict[f'state_{state}'] = 1
-        data_dict['title_status_clean vehicle'] = 1
-        data_dict['is_premium_1'] = 1 if brand in ['bmw', 'mercedes-benz'] else 0
-        data_dict['is_popular_color_1'] = 1 if color in ['white', 'black', 'silver', 'gray'] else 0
-        data_dict['clean_title_score_1'] = 1
-        
-        # Feature sırasını kontrol et ve düzelt
-        input_df = pd.DataFrame([data_dict])[feature_columns]
-        
-        # Debug bilgisi
-        st.write("Debug Bilgileri:")
-        st.write("Input DataFrame kolonları:", input_df.columns.tolist())
-        st.write("Beklenen kolonlar:", feature_columns)
-        
-        # Tahmin
-        try:
-            prediction = model.predict(input_df)[0]
-            st.success(f'Tahmini Fiyat: ${prediction:,.2f}')
-            
-            # Detaylı bilgiler
-            st.markdown("---")
-            st.markdown("### Fiyatı Etkileyen Faktörler")
-            info_col1, info_col2 = st.columns(2)
-            
-            with info_col1:
-                st.write(f"- Araç Yaşı: {car_age} yıl")
-                st.write(f"- Kilometre: {mileage:,} km")
-                st.write(f"- Yıllık Ort. Kilometre: {avg_km_per_year:,.0f} km")
-            
-            with info_col2:
-                st.write(f"- Premium Marka: {'Evet' if data_dict['is_premium_1'] == 1 else 'Hayır'}")
-                st.write(f"- Popüler Renk: {'Evet' if data_dict['is_popular_color_1'] == 1 else 'Hayır'}")
-                st.write(f"- Araç Durumu: {title_status}")
-                
-        except Exception as e:
-            st.error(f"Tahmin işlemi sırasında hata: {str(e)}")
-            st.write("Input DataFrame:", input_df)
-            
-except Exception as e:
-    st.error(f"Uygulama başlatılırken hata: {str(e)}")
+# Model ve feature columns yükleme
+model_path = os.path.join('models', 'final_model.pkl')
+with open(model_path, 'rb') as file:
+   model = pickle.load(file)
+
+feature_columns_path = os.path.join('models', 'feature_columns.pkl')
+with open(feature_columns_path, 'rb') as file:
+   feature_columns = pickle.load(file)
+
+# Ana başlık
+st.title('🚗 Araç Fiyat Tahmin Uygulaması')
+st.markdown("---")
+
+# Yan panel (sidebar) için açıklama
+st.sidebar.header("Uygulama Hakkında")
+st.sidebar.markdown("""
+### Araç Fiyat Tahmin Sistemi
+
+Bu uygulama, gelişmiş makine öğrenmesi algoritmaları kullanarak araç fiyat tahmini yapar.
+
+**Özellikler:**
+- Gerçek piyasa verilerine dayalı tahminler
+- 50'den fazla özellik analizi
+- Anlık fiyat hesaplama
+- Detaylı araç özellikleri analizi
+
+**Veri Kaynağı:** 
+- USA Cars Dataset
+- 2,500+ araç verisi
+- Güncel piyasa analizi
+""")
+
+# Ana panel - Kullanıcı girdileri
+st.header('Araç Özelliklerini Giriniz')
+
+# 3 sütunlu layout
+col1, col2 = st.columns(2)
+
+# İlk sütun
+with col1:
+   brand = st.selectbox('Marka', ['ford', 'chevrolet', 'toyota', 'honda', 'bmw', 'nissan', 'dodge', 'mercedes-benz'])
+   year = st.slider('Model Yılı', 2000, 2024, 2020)
+   mileage = st.number_input('Kilometre', min_value=0, max_value=300000, value=50000, step=1000)
+
+# İkinci sütun
+with col2:
+   color = st.selectbox('Renk', ['white', 'black', 'silver', 'gray', 'blue', 'red'])
+   title_status = st.selectbox('Araç Durumu', ['clean vehicle', 'salvage insurance loss'])
+   state = st.selectbox('Eyalet', ['california', 'florida', 'texas', 'new york', 'pennsylvania'])
+
+# Tahmin butonu
+if st.button('Fiyat Tahmini Yap', type='primary'):
+   try:
+       # Feature engineering
+       input_data = pd.DataFrame({
+           'brand': [brand],
+           'year': [year],
+           'mileage': [mileage],
+           'color': [color],
+           'state': [state],
+           'title_status': [title_status]
+       })
+
+       # Türetilmiş özellikler
+       input_data['car_age'] = 2024 - input_data['year']
+       input_data['avg_km_per_year'] = input_data['mileage'] / input_data['car_age']
+       input_data['is_premium'] = input_data['brand'].isin(['bmw', 'mercedes-benz']).astype(int)
+       input_data['is_popular_color'] = input_data['color'].isin(['white', 'black', 'silver', 'gray']).astype(int)
+       input_data['clean_title_score'] = (input_data['title_status'] == 'clean vehicle').astype(int)
+
+       # One-hot encoding
+       input_data = pd.get_dummies(input_data)
+
+       # Eksik kolonları modelin beklediği formata getirme
+       for col in feature_columns:
+           if col not in input_data.columns:
+               input_data[col] = 0
+
+       # Sütunları modele uygun hale getirme
+       input_data = input_data[feature_columns]
+
+       # Tahmin
+       prediction = model.predict(input_data)[0]
+       
+       # Sonuç gösterimi
+       st.success(f'Tahmini Fiyat: ${prediction:,.2f}')
+       
+       # Detaylı açıklama
+       st.markdown("---")
+       st.markdown("### Fiyatı Etkileyen Faktörler")
+       col1, col2 = st.columns(2)
+       
+       with col1:
+           st.write(f"- Araç Yaşı: {2024 - year} yıl")
+           st.write(f"- Kilometre: {mileage:,} km")
+           st.write(f"- Premium Marka: {'Evet' if brand in ['bmw', 'mercedes-benz'] else 'Hayır'}")
+           
+       with col2:
+           st.write(f"- Durum: {title_status}")
+           st.write(f"- Lokasyon: {state}")
+           st.write(f"- Renk: {color}")
+           
+   except Exception as e:
+       st.error(f"Bir hata oluştu: {str(e)}")
+       st.error("Lütfen tüm alanları doğru şekilde doldurunuz.")
