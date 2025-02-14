@@ -11,7 +11,7 @@ st.set_page_config(
    layout="wide"
 )
 
-# Model, scaler ve feature columns yükleme
+# Model ve feature columns yükleme
 model_path = os.path.join('models', 'final_model.pkl')
 with open(model_path, 'rb') as file:
    model = pickle.load(file)
@@ -33,6 +33,17 @@ st.sidebar.header("Uygulama Hakkında")
 st.sidebar.markdown("""
 ### Araç Fiyat Tahmin Sistemi
 Bu uygulama, gelişmiş makine öğrenmesi algoritmaları kullanarak araç fiyat tahmini yapar.
+
+**Özellikler:**
+- Gerçek piyasa verilerine dayalı tahminler
+- 50'den fazla özellik analizi
+- Anlık fiyat hesaplama
+- Detaylı araç özellikleri analizi
+
+**Veri Kaynağı:** 
+- USA Cars Dataset
+- 2,500+ araç verisi
+- Güncel piyasa analizi
 """)
 
 # Ana panel - Kullanıcı girdileri
@@ -66,15 +77,24 @@ if st.button('Fiyat Tahmini Yap', type='primary'):
            'title_status': [title_status]
        })
 
-       # Türetilmiş özellikler
+       # Temel hesaplamalar
        input_data['car_age'] = 2024 - input_data['year']
        input_data['avg_km_per_year'] = input_data['mileage'] / input_data['car_age']
+
+       # Km başına fiyat hesaplama
+       base_price = 25000  # Temel fiyat
+       age_factor = 0.95 ** input_data['car_age']  # Her yıl için %5 değer kaybı
+       mileage_factor = 0.9 ** (input_data['mileage'] / 10000)  # Her 10000 km için %10 değer kaybı
+       adjusted_price = base_price * age_factor * mileage_factor
+       input_data['price_per_km'] = adjusted_price / (input_data['mileage'] + 1)
+
+       # Premium ve renk özellikleri
        input_data['is_premium'] = input_data['brand'].isin(['bmw', 'mercedes-benz']).astype(int)
        input_data['is_popular_color'] = input_data['color'].isin(['white', 'black', 'silver', 'gray']).astype(int)
        input_data['clean_title_score'] = (input_data['title_status'] == 'clean vehicle').astype(int)
 
        # One-hot encoding
-       input_data = pd.get_dummies(input_data, columns=['brand', 'color', 'state', 'title_status'])
+       input_data = pd.get_dummies(input_data)
 
        # Eksik kolonları modelin beklediği formata getirme
        for col in feature_columns:
@@ -84,10 +104,10 @@ if st.button('Fiyat Tahmini Yap', type='primary'):
        # Sütunları modele uygun hale getirme
        input_data = input_data[feature_columns]
 
-       # Nümerik değerleri ölçekle
-       numeric_cols = ['year', 'mileage', 'car_age', 'avg_km_per_year']
+       # Nümerik değerleri ölçekleme
+       numeric_cols = ['year', 'mileage', 'car_age', 'avg_km_per_year', 'price_per_km']
        input_data[numeric_cols] = scaler.transform(input_data[numeric_cols])
-       
+
        # Tahmin
        prediction = model.predict(input_data)[0]
        
@@ -102,15 +122,14 @@ if st.button('Fiyat Tahmini Yap', type='primary'):
        with col1:
            st.write(f"- Araç Yaşı: {2024 - year} yıl")
            st.write(f"- Kilometre: {mileage:,} km")
-           st.write(f"- Premium Marka: {'Evet' if brand in ['bmw', 'mercedes-benz'] else 'Hayır'}")
+           st.write(f"- Yıllık Ort. Kilometre: {input_data['avg_km_per_year'].iloc[0]:,.0f} km")
            
        with col2:
-           st.write(f"- Durum: {title_status}")
-           st.write(f"- Lokasyon: {state}")
-           st.write(f"- Renk: {color}")
+           st.write(f"- Premium Marka: {'Evet' if brand in ['bmw', 'mercedes-benz'] else 'Hayır'}")
+           st.write(f"- Popüler Renk: {'Evet' if color in ['white', 'black', 'silver', 'gray'] else 'Hayır'}")
+           st.write(f"- Araç Durumu: {title_status}")
            
    except Exception as e:
        st.error(f"Bir hata oluştu: {str(e)}")
-       # Debug bilgisi
        st.write("Mevcut kolonlar:", input_data.columns.tolist())
        st.write("Beklenen kolonlar:", feature_columns)
