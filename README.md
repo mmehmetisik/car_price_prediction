@@ -69,19 +69,19 @@ Enter vehicle details (brand, model year, mileage, color, state, vehicle conditi
 Click the "Predict Price" button
 View the predicted car price instantly! 🚗 💰
 
-📚 Dataset
+# 📚 Dataset
 The model is trained on the USA Cars Dataset, featuring:
 
 2,500+ car records
 Comprehensive vehicle information
 Real market data
 
-📝 License
+# 📝 License
 This project is licensed under the MIT License - see the LICENSE file for details.
-🤝 Contributing & Contact
+# 🤝 Contributing & Contact
 Interested in contributing? Follow these steps:
 
-Fork the repository
+# Fork the repository
 Create a new branch (feature-addition)
 Make your changes and commit them
 Submit a Pull Request (PR) for review
