@@ -49,7 +49,7 @@ pip install -r requirements.txt
 streamlit run app.py
 
 📂 Project Structure
-
+```bash
 Car Price Prediction
 ├── models/
 │   ├── final_model.pkl        # Trained ML model
@@ -61,6 +61,7 @@ Car Price Prediction
 ├── car_pred.py               # Machine Learning model training script
 ├── requirements.txt          # Required Python packages
 └── README.md                # Documentation
+```
 
 🎯 How to Use
 
