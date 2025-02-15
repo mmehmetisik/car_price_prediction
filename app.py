@@ -4,65 +4,63 @@ import numpy as np
 import pickle
 import os
 
-# Uygulama Konfigürasyonu
+# Application Configuration
 st.set_page_config(
-   page_title="Araç Fiyat Tahmini",
+   page_title="Car Price Prediction",
    page_icon="🚗",
    layout="wide"
 )
 
-# Model ve feature columns yükleme
+# Loading model and feature columns
 model_path = os.path.join('models', 'final_model.pkl')
 with open(model_path, 'rb') as file:
    model = pickle.load(file)
-
 feature_columns_path = os.path.join('models', 'feature_columns.pkl')
 with open(feature_columns_path, 'rb') as file:
    feature_columns = pickle.load(file)
 
-# Ana başlık
-st.title('🚗 Araç Fiyat Tahmin Uygulaması')
+# Main title
+st.title('🚗 Car Price Prediction App')
 st.markdown("---")
 
-# Yan panel (sidebar) için açıklama
-st.sidebar.header("Uygulama Hakkında")
+# Sidebar description
+st.sidebar.header("About Application")
 st.sidebar.markdown("""
-### Araç Fiyat Tahmin Sistemi
+### Car Price Prediction System
+This application predicts car prices using advanced machine learning algorithms.
 
-Bu uygulama, gelişmiş makine öğrenmesi algoritmaları kullanarak araç fiyat tahmini yapar.
+**Features:**
+- Predictions based on real market data
+- Analysis of 50+ features
+- Instant price calculation
+- Detailed vehicle feature analysis
 
-**Özellikler:**
-- Gerçek piyasa verilerine dayalı tahminler
-- 50'den fazla özellik analizi
-- Anlık fiyat hesaplama
-- Detaylı araç özellikleri analizi
-
-**Veri Kaynağı:** 
+**Data Source:** 
 - USA Cars Dataset
-- 2,500+ araç verisi
-- Güncel piyasa analizi
+- 2,500+ vehicle records
+- Current market analysis
 """)
 
-# Ana panel - Kullanıcı girdileri
-st.header('Araç Özelliklerini Giriniz')
+# Main panel - User inputs
+st.header('Enter Vehicle Details')
 
-# 3 sütunlu layout
+# 2 column layout
 col1, col2 = st.columns(2)
 
-# İlk sütun
+# First column
 with col1:
-   brand = st.selectbox('Marka', ['ford', 'chevrolet', 'toyota', 'honda', 'bmw', 'nissan', 'dodge', 'mercedes-benz'])
-   year = st.slider('Model Yılı', 2000, 2024, 2020)
-   mileage = st.number_input('Kilometre', min_value=0, max_value=300000, value=50000, step=1000)
+   brand = st.selectbox('Brand', ['ford', 'chevrolet', 'toyota', 'honda', 'bmw', 'nissan', 'dodge', 'mercedes-benz'])
+   year = st.slider('Model Year', 2000, 2024, 2020)
+   mileage = st.number_input('Mileage', min_value=0, max_value=300000, value=50000, step=1000)
 
-# İkinci sütun
+# Second column
 with col2:
-   color = st.selectbox('Renk', ['white', 'black', 'silver', 'gray', 'blue', 'red'])
-   title_status = st.selectbox('Araç Durumu', ['clean vehicle', 'salvage insurance loss'])
-   state = st.selectbox('Eyalet', ['california', 'florida', 'texas', 'new york', 'pennsylvania'])
+   color = st.selectbox('Color', ['white', 'black', 'silver', 'gray', 'blue', 'red'])
+   title_status = st.selectbox('Vehicle Condition', ['clean vehicle', 'salvage insurance loss'])
+   state = st.selectbox('State', ['california', 'florida', 'texas', 'new york', 'pennsylvania'])
 
-# Tahmin butonu
-if st.button('Fiyat Tahmini Yap', type='primary'):
+# Prediction button
+if st.button('Predict Price', type='primary'):
    try:
        # Feature engineering
        input_data = pd.DataFrame({
@@ -74,7 +72,7 @@ if st.button('Fiyat Tahmini Yap', type='primary'):
            'title_status': [title_status]
        })
 
-       # Türetilmiş özellikler
+       # Derived features
        input_data['car_age'] = 2024 - input_data['year']
        input_data['avg_km_per_year'] = input_data['mileage'] / input_data['car_age']
        input_data['is_premium'] = input_data['brand'].isin(['bmw', 'mercedes-benz']).astype(int)
@@ -84,35 +82,35 @@ if st.button('Fiyat Tahmini Yap', type='primary'):
        # One-hot encoding
        input_data = pd.get_dummies(input_data)
 
-       # Eksik kolonları modelin beklediği formata getirme
+       # Adding missing columns to match model's expected format
        for col in feature_columns:
            if col not in input_data.columns:
                input_data[col] = 0
 
-       # Sütunları modele uygun hale getirme
+       # Arranging columns to match model format
        input_data = input_data[feature_columns]
 
-       # Tahmin
+       # Prediction
        prediction = model.predict(input_data)[0]
        
-       # Sonuç gösterimi
-       st.success(f'Tahmini Fiyat: ${prediction:,.2f}')
+       # Displaying result
+       st.success(f'Estimated Price: ${prediction:,.2f}')
        
-       # Detaylı açıklama
+       # Detailed explanation
        st.markdown("---")
-       st.markdown("### Fiyatı Etkileyen Faktörler")
+       st.markdown("### Price Affecting Factors")
        col1, col2 = st.columns(2)
        
        with col1:
-           st.write(f"- Araç Yaşı: {2024 - year} yıl")
-           st.write(f"- Kilometre: {mileage:,} km")
-           st.write(f"- Premium Marka: {'Evet' if brand in ['bmw', 'mercedes-benz'] else 'Hayır'}")
+           st.write(f"- Vehicle Age: {2024 - year} years")
+           st.write(f"- Mileage: {mileage:,} miles")
+           st.write(f"- Premium Brand: {'Yes' if brand in ['bmw', 'mercedes-benz'] else 'No'}")
            
        with col2:
-           st.write(f"- Durum: {title_status}")
-           st.write(f"- Lokasyon: {state}")
-           st.write(f"- Renk: {color}")
+           st.write(f"- Condition: {title_status}")
+           st.write(f"- Location: {state}")
+           st.write(f"- Color: {color}")
            
    except Exception as e:
-       st.error(f"Bir hata oluştu: {str(e)}")
-       st.error("Lütfen tüm alanları doğru şekilde doldurunuz.")
+       st.error(f"An error occurred: {str(e)}")
+       st.error("Please fill all fields correctly.")
