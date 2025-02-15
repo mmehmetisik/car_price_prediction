@@ -2,6 +2,9 @@
 
 This project is a **machine learning-based web application** that predicts the **market value of used cars** based on user input. Built with LightGBM and Streamlit, it provides accurate predictions based on real market data.
 
+![image](https://github.com/user-attachments/assets/861c8ea6-7796-4e9a-ba7d-579e62846060)
+
+
 🔗 Live Demo: [Car Price Predictor App](https://miuul-car-price-predictor.streamlit.app/)
 
 ## 📊 Overview
